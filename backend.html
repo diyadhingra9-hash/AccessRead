@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AccessRead — Multimodal Accessibility Workspace</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--ink:#1A1A18;--stone:#F2EFE8;--clay:#B5865A;--graph:#6B6860;--rule:#D4CEC4;--ok:#2d6a4f;--err:#8b2020}
+body{font-family:Georgia,serif;background:var(--stone);color:var(--ink);line-height:1.6}
+.layout{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+.sidebar{background:var(--ink);padding:20px;color:var(--stone);position:sticky;top:0;height:100vh;overflow-y:auto}
+.sidebar h1{font-size:24px;margin-bottom:4px;letter-spacing:1px}.sidebar-sub{font-size:9px;color:var(--clay);text-transform:uppercase;letter-spacing:2px;margin-bottom:20px}
+.section-title{font-size:10px;color:var(--clay);text-transform:uppercase;letter-spacing:2px;margin:16px 0 8px;font-weight:bold}
+.toggle-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #2a2926;font-size:12px}.toggle-label{flex:1}.toggle-label-small{font-size:9px;color:#999;margin-top:2px}
+.switch{position:relative;display:inline-block;width:40px;height:20px}.switch input{opacity:0;width:0;height:0}.slider{position:absolute;cursor:pointer;inset:0;background:#3a3936;border-radius:20px;transition:.3s}.slider:before{position:absolute;content:"";height:16px;width:16px;left:2px;bottom:2px;background:#fff;border-radius:50%;transition:.3s}input:checked+.slider{background:var(--clay)}input:checked+.slider:before{transform:translateX(20px)}
+.slider-row{padding:8px 0;border-bottom:1px solid #2a2926}.slider-label{display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px}
+input[type=range]{width:100%;height:4px;border-radius:2px;background:#3a3936;outline:none;-webkit-appearance:none;appearance:none;}input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--clay);cursor:pointer}input[type=range]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--clay);cursor:pointer;border:0}
+.btn{width:100%;padding:8px;margin:6px 0;border:0;border-radius:4px;font-family:Calibri,sans-serif;font-size:11px;cursor:pointer;font-weight:bold}.btn-primary{background:var(--clay);color:white}.btn-secondary{background:var(--rule);color:var(--ink)}.btn:hover,.control-btn:hover{opacity:.85}
+.main{padding:30px 40px;overflow-y:auto}.header{margin-bottom:24px}.page-title{font-size:28px;margin-bottom:4px}.page-desc{font-size:12px;color:var(--graph)}
+.input-area,.card,#docViewer{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:16px;margin-bottom:16px}
+textarea{width:100%;min-height:150px;border:1px solid var(--rule);border-radius:4px;padding:10px;font-family:Georgia,serif;font-size:13px;resize:vertical}
+#docViewer{min-height:260px;font-size:15px;line-height:1.8}#docViewer p{margin-bottom:12px}#docViewer.ar-dyslexia{font-family:OpenDyslexic,Georgia,serif;letter-spacing:.05em}#docViewer.ar-contrast{background:#000!important;color:#fff!important}#docViewer.ar-calm{max-width:680px;background:#FAF8F3}
+.word-highlight{background:rgba(181,134,90,.3);outline:1.5px solid rgba(181,134,90,.6);border-radius:2px;padding:2px 0}
+#ruler{position:fixed;left:0;right:0;height:28px;background:rgba(255,235,59,.2);border-top:1.5px solid rgba(255,200,0,.5);border-bottom:1.5px solid rgba(255,200,0,.5);pointer-events:none;z-index:9999;display:none}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.control-btn{padding:7px 12px;border:1px solid var(--rule);background:#fff;border-radius:4px;cursor:pointer;font-family:Calibri,sans-serif;font-size:11px;font-weight:bold}
+.tts-bar{display:flex;align-items:center;gap:8px;padding:10px;background:var(--ink);border-radius:6px;margin-bottom:16px;flex-wrap:wrap}.tts-btn{width:30px;height:30px;border:1px solid #3a3936;background:#2a2926;color:var(--stone);border-radius:50%;cursor:pointer}.tts-btn:hover{background:var(--clay)}
+.progress-bar{flex:1;min-width:120px;height:4px;background:#3a3936;border-radius:2px;overflow:hidden}.progress-fill{height:100%;background:var(--clay);width:0%;transition:width .2s}
+.speed-group{display:flex;align-items:center;gap:4px;flex-wrap:wrap}.speed-group button{background:#2a2926;color:var(--stone);border:1px solid #444;padding:4px 7px;border-radius:3px;cursor:pointer;font-size:10px}.speed-group button.active{background:var(--clay)}
+.status{font-size:11px;color:var(--graph);font-family:Calibri,sans-serif;min-height:18px}.status.ok{color:var(--ok)}.status.err{color:var(--err)}
+.card h2{font-size:16px;margin-bottom:8px}.card p.help{font-size:11px;color:var(--graph);margin-bottom:10px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.row>*{margin-bottom:6px}.select,.small-input{padding:7px;border:1px solid var(--rule);border-radius:4px;background:#fff;font-size:11px}
+.output{background:#faf8f3;border:1px solid var(--rule);padding:12px;border-radius:4px;white-space:pre-wrap;min-height:50px;font-size:13px}
+.badge{font:10px Calibri,sans-serif;padding:3px 7px;border-radius:12px;background:#eee}.privacy{font-size:10px;color:var(--graph);margin-top:8px}
+video{width:100%;max-width:560px;background:#111;border-radius:6px;margin-top:8px;display:none}.camera-grid{display:grid;grid-template-columns:minmax(0,560px) 1fr;gap:12px}
+.notice{padding:10px;background:#f6f0e8;border-left:3px solid var(--clay);font-size:11px;margin:8px 0}
+@font-face{font-family:OpenDyslexic;src:url("https://cdn.jsdelivr.net/npm/open-dyslexic@1.0.3/fonts/OpenDyslexic-Regular.otf") format("opentype")}
+@media(max-width:800px){.layout{grid-template-columns:1fr}.sidebar{height:auto;position:relative}.main{padding:16px}.camera-grid{grid-template-columns:1fr}}
+:focus-visible{outline:3px solid var(--clay);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
+
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10000;display:none;padding:20px}
+.modal-backdrop.open{display:flex;align-items:center;justify-content:center}
+.modal{background:#fff;color:var(--ink);width:min(760px,96vw);max-height:90vh;overflow:auto;border-radius:8px;padding:22px;border:1px solid var(--rule);box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal h2{font-size:20px;margin-bottom:8px}.modal h3{font-size:14px;margin:18px 0 6px}
+.modal p,.modal li{font-size:12px}.modal ul{padding-left:20px}.modal a{color:#6b4b2f}
+.modal-close{float:right;width:34px;height:34px;border:1px solid var(--rule);background:#fff;border-radius:50%;cursor:pointer;font-size:18px}
+.resource-btn{font-size:10px;background:transparent;color:var(--stone);border:1px solid #4b4842;padding:6px 8px;border-radius:4px;cursor:pointer}
+.resource-btn:hover{background:#2a2926}
+.isl-results{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:12px}
+.isl-sign-sequence{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.isl-sign-chip{padding:8px 13px;border:1px solid var(--rule);border-radius:18px;background:#f6f0e8;font:12px Calibri,sans-serif;font-weight:bold;cursor:pointer}
+.isl-sign-chip.active{background:var(--clay);color:#fff}
+.isl-card{background:#fff;border:1px solid var(--rule);border-radius:8px;padding:12px}
+.isl-card h3{font-size:14px;margin-bottom:6px}
+.isl-card p{font-size:10px;color:var(--graph);margin-bottom:8px}
+.isl-card video,.isl-card iframe{width:100%;height:260px;border:0;border-radius:6px;display:block;margin:8px 0;background:#111}
+.isl-card .official-note{font:11px Calibri,sans-serif;color:var(--graph);margin-top:8px;line-height:1.4}
+.isl-card .official-link{display:inline-block;margin-top:8px;padding:6px 9px;background:var(--clay);color:#fff;text-decoration:none;border-radius:4px;font:11px Calibri,sans-serif;font-weight:bold}
+.isl-letters{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.isl-letter{padding:6px 9px;border:1px solid var(--rule);border-radius:6px;background:#f6f0e8;font-weight:bold;font-size:11px}
+.isl-source-badge{font-size:10px;color:var(--graph);margin-top:6px}
+
+/* Automatic Text → ISL visual sequence */
+.isl-auto-sequence{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px;margin-top:16px}
+.isl-auto-card{background:#fafafa;border:1px solid #d8d8d8;border-radius:16px;padding:14px;text-align:center;overflow:hidden}
+.isl-auto-card .isl-word{font-size:20px;font-weight:800;margin-bottom:12px}
+.isl-auto-card iframe{width:100%;aspect-ratio:16/9;border:0;border-radius:12px;background:#111}
+.isl-auto-card .isl-placeholder{aspect-ratio:16/9;border-radius:12px;background:#f0f0f0;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box;color:#555}
+.isl-auto-card .isl-placeholder strong{display:block;color:#222;margin-bottom:8px}
+.isl-fingerspell{display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-top:12px}
+.isl-letter{width:34px;height:34px;border:1px solid #bbb;border-radius:7px;display:flex;align-items:center;justify-content:center;font-weight:700;background:#fff}
+.isl-auto-source{font-size:12px;color:#666;margin-top:8px;line-height:1.4}
+
+/* Context-aware dictionary */
+.dictionary-word-input{flex:1;min-width:180px;padding:9px;border:1px solid var(--rule);border-radius:4px;font:13px Georgia,serif}
+.dictionary-panel{background:#faf8f3;border:1px solid var(--rule);padding:12px;border-radius:5px;margin-top:10px}
+.dictionary-panel h3{font-size:15px;margin:0 0 6px}
+.dictionary-panel p{font-size:12px;margin:5px 0}
+.dictionary-label{font:10px Calibri,sans-serif;text-transform:uppercase;letter-spacing:1px;color:var(--graph);font-weight:bold}
+.dictionary-source{font-size:10px;color:var(--graph);overflow-wrap:anywhere}
+.dictionary-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+
+</style>
+</head>
+<body>
+<div class="layout">
+<aside class="sidebar">
+<h1>AccessRead</h1><div class="sidebar-sub">Multimodal Accessibility</div>
+<div class="section-title">Reading Modes</div>
+<div class="toggle-item"><div><div class="toggle-label">Dyslexia Font</div><div class="toggle-label-small">OpenDyslexic</div></div><label class="switch"><input type="checkbox" id="toggleDyslexia"><span class="slider"></span></label></div>
+<div class="slider-row"><div class="slider-label"><span>Word Spacing</span><span id="spacingVal">Normal</span></div><input aria-label="Word spacing" type="range" id="spacing" min="0" max="12" value="0"></div>
+<div class="slider-row"><div class="slider-label"><span>Line Height</span><span id="lineVal">1.8</span></div><input aria-label="Line height" type="range" id="lineHeight" min="14" max="28" value="18"></div>
+<div class="toggle-item"><div><div class="toggle-label">Reading Ruler</div><div class="toggle-label-small">Yellow line under cursor</div></div><label class="switch"><input type="checkbox" id="toggleRuler"><span class="slider"></span></label></div>
+<div class="section-title">Visual Modes</div>
+<div class="toggle-item"><div class="toggle-label">High Contrast</div><label class="switch"><input type="checkbox" id="toggleContrast"><span class="slider"></span></label></div>
+<div class="toggle-item"><div class="toggle-label">Calm Mode</div><label class="switch"><input type="checkbox" id="toggleCalm"><span class="slider"></span></label></div>
+<div class="section-title">Audio</div>
+<div class="toggle-item"><div class="toggle-label">Narration</div><label class="switch"><input type="checkbox" id="toggleTTS"><span class="slider"></span></label></div>
+<button class="btn btn-secondary" onclick="resetAll()">Reset All</button>
+</aside>
+
+<main class="main">
+<header class="header"><div class="page-title">AccessRead</div><div class="page-desc">Read, scan, translate, understand and communicate through one accessibility workspace.</div><div class="row" style="margin-top:10px"><button class="control-btn" onclick="openResources('translation')">Resources</button></div></header>
+
+<section class="input-area">
+<textarea id="textInput" aria-label="Text input" placeholder="Paste text here or type something...">The quick brown fox jumps over the lazy dog. This is a sample text to demonstrate AccessRead accessibility features. Try pasting your own text or uploading content.</textarea>
+<div class="row"><button class="control-btn" onclick="loadText()">Load Text</button><button class="control-btn" onclick="clearText()">Clear</button><button class="control-btn" onclick="startVoiceInput()">🎙 Speak to Type</button><button class="control-btn" onclick="stopVoiceInput()">⏹ Stop Voice</button></div>
+<div class="privacy">Microphone is requested only after you click “Speak to Type”.</div>
+</section>
+
+<div id="ruler"></div>
+<div id="docViewer" aria-live="polite"></div>
+
+<div class="tts-bar" aria-label="Narration controls">
+<button class="tts-btn" id="ttsPlay" title="Play" aria-label="Play narration">▶</button>
+<button class="tts-btn" id="ttsPause" title="Pause or resume" aria-label="Pause or resume narration">⏸</button>
+<button class="tts-btn" id="ttsStop" title="Stop" aria-label="Stop narration">⏹</button>
+<div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+<div class="speed-group" role="group" aria-label="Narration speed">
+<span style="font-size:10px;color:#ddd">Speed</span>
+<button data-speed=".25">0.25×</button><button data-speed=".5">0.5×</button><button data-speed=".75">0.75×</button><button data-speed="1" class="active">1×</button><button data-speed="1.25">1.25×</button><button data-speed="1.5">1.5×</button><button data-speed="1.75">1.75×</button><button data-speed="2">2×</button>
+</div>
+<span style="font-size:10px;color:#ddd">Browser TTS</span>
+</div>
+
+<div class="card">
+<h2>🌐 Language</h2><p class="help">Translate the active AccessRead text between English and Hindi using a real translation service.</p>
+<div class="row">
+<select id="sourceLang" class="select" aria-label="Source language"><option value="en">English</option><option value="hi">Hindi</option></select>
+<button class="control-btn" onclick="swapLanguages()" aria-label="Swap languages">⇄ Swap Languages</button>
+<select id="targetLang" class="select" aria-label="Target language"><option value="hi">Hindi</option><option value="en">English</option></select>
+<button class="control-btn" onclick="translateText()">Translate</button>
+<button class="control-btn" onclick="useTranslation()">Use Translation</button>
+<button class="resource-btn" onclick="openResources('translation')">Translation Resources</button>
+</div>
+<div id="translationOutput" class="output" contenteditable="true" role="textbox" aria-label="Editable translation result">Translation result will appear here.</div>
+<div class="privacy">Translation sends the text to the configured provider. For production, set a backend proxy so provider credentials and traffic controls stay server-side.</div>
+</div>
+
+
+<div class="card" id="contextDictionaryCard">
+<h2>📚 Context-Aware Dictionary</h2>
+<p class="help">Look up a word, see how it is used in the current paragraph, and optionally find more information through the TinyFish backend.</p>
+<div class="row">
+  <label for="dictionaryWord" class="dictionary-label" style="align-self:center">Word</label>
+  <input id="dictionaryWord" class="dictionary-word-input" type="text" maxlength="100" placeholder="Select a word in the reader or type one" autocomplete="off">
+  <button class="control-btn" id="dictionaryLookupBtn" type="button">Find Meaning</button>
+</div>
+<p class="privacy">Tip: select a word in the reading panel first. AccessRead will use the surrounding sentence as context.</p>
+<div id="dictionaryStatus" class="status" role="status" aria-live="polite">Ready for a word.</div>
+<div class="dictionary-panel">
+  <div class="dictionary-label">Definition</div>
+  <p id="dictionaryDefinition">A definition will appear here.</p>
+  <div class="dictionary-label" style="margin-top:12px">In your text</div>
+  <p id="dictionaryContext">Select a word in the reading panel to find its sentence context.</p>
+  <div class="dictionary-label" style="margin-top:12px">Simple explanation</div>
+  <p id="dictionarySimple">The contextual explanation will appear here when available.</p>
+  <div class="dictionary-label" style="margin-top:12px">Example</div>
+  <p id="dictionaryExample">An example sentence will appear here when available.</p>
+  <div class="dictionary-label" style="margin-top:12px">Web enrichment</div>
+  <p id="dictionaryEnrichment">Use “Find more with TinyFish” to request additional context from your configured backend.</p>
+  <p id="dictionarySource" class="dictionary-source"></p>
+</div>
+<div class="dictionary-actions">
+  <button class="control-btn" id="dictionarySpeakBtn" type="button">🔊 Read explanation</button>
+  <button class="control-btn" id="dictionaryTinyFishBtn" type="button">🌐 Find more with TinyFish</button>
+</div>
+<p class="privacy">Privacy: the word and its sentence are sent to the dictionary provider when you look up a word. TinyFish enrichment requires a backend endpoint; never place your TinyFish API key in this HTML file.</p>
+</div>
+
+<div class="card">
+<h2>📷 OCR — Scan to Text</h2><p class="help">OCR extracts text from an image. The result can then be edited, narrated, translated, simplified or summarized.</p>
+<div class="row"><input id="ocrFile" type="file" accept="image/*,.pdf" aria-label="Upload image or PDF"><button class="control-btn" onclick="runOCR()">Run OCR</button></div>
+<div id="ocrProgress" class="status">No file selected.</div>
+<div id="ocrOutput" class="output">OCR output will appear here.</div>
+<div class="privacy">OCR is attempted locally in the browser when the OCR library is available. Accuracy depends on image quality and language.</div>
+</div>
+
+<div class="card">
+<h2>🧠 Understand</h2><p class="help">Summaries are generated from the current text. If no AI backend is configured, AccessRead uses a clearly labelled local extractive algorithm rather than pretending it is an AI model.</p>
+<div class="row"><button class="control-btn" onclick="simplifyText()">✨ Simplify</button><button class="control-btn" onclick="summarizeText()">📝 Generate Summary</button><select id="summaryMode" class="select" aria-label="Summary mode"><option value="short">Short Summary</option><option value="key">Key Points</option><option value="detailed">Detailed Summary</option></select></div>
+<div id="aiOutput" class="output">Summary result will appear here.</div>
+</div>
+
+<div class="card">
+<h2>🤟 Indian Sign Language</h2>
+<p class="help">Enter or upload text. AccessRead automatically displays the ISL visual for each recognized word in sequence. Nothing needs to be clicked.</p>
+<div class="notice">Example: <strong>I want water</strong> → I / ME → WANT → WATER. Each verified video appears directly on this page.</div>
+<div class="row"><button class="control-btn" onclick="showISL()">🤟 Translate Text to ISL</button><button class="resource-btn" onclick="openResources('isl')">ISL Resources</button><button class="control-btn" onclick="requestCamera()">📷 Start ISL Camera</button><button class="control-btn" onclick="stopCamera()">⏹ Stop Camera</button></div>
+<div id="islStatus" class="output" aria-live="polite">ISL visuals will appear here.</div>
+<div id="islSequence" class="isl-auto-sequence" aria-label="Automatic ISL visual sequence"></div>
+<div id="islResults" class="isl-results"></div>
+<div class="camera-grid">
+<div><video id="camera" autoplay playsinline muted aria-label="Live ISL camera preview"></video></div>
+<div><div id="islModelStatus" class="model-status">ISL recognition model: not configured. Camera will not invent recognition results.</div></div>
+</div>
+<div class="privacy">Camera stays OFF until you explicitly click Start ISL Camera. Text-to-ISL runs locally except for the embedded verified video source.</div>
+</div>
+
+<div class="controls"><button class="control-btn" onclick="analyzeText()">📊 Analyze Reading Level</button><button class="control-btn" onclick="toggleRulerDemo()">📏 Show Ruler Demo</button></div>
+<div class="status" id="status" aria-live="polite">Ready</div>
+</main>
+</div>
+
+
+<div id="resourceModal" class="modal-backdrop" role="presentation" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="resourceTitle">
+    <button class="modal-close" onclick="closeResources()" aria-label="Close Resources">×</button>
+    <h2 id="resourceTitle">AccessRead Resources</h2>
+    <p>Technical resources are kept here so the main workspace stays focused. External services are disclosed instead of being hidden behind pretend magic buttons.</p>
+    <div id="translationResources">
+      <h3>Translation Resources</h3>
+      <ul>
+        <li><strong>Provider:</strong> MyMemory Translation API for the browser prototype.</li>
+        <li><strong>Integration:</strong> AccessRead can use <code>TRANSLATION_BACKEND_URL</code> instead, which is the recommended production architecture.</li>
+        <li><strong>Privacy:</strong> text is sent to the selected translation provider when Translate is pressed.</li>
+      </ul>
+      <p><a href="https://mymemory.translated.net/doc/spec.php" target="_blank" rel="noopener noreferrer">MyMemory API documentation</a></p>
+      <p><a href="https://libretranslate.com/docs/" target="_blank" rel="noopener noreferrer">LibreTranslate API documentation</a></p>
+    </div>
+    <div id="islResources">
+      <h3>ISL Resources</h3>
+      <ul>
+        <li><strong>ISLRTC:</strong> Indian Sign Language Research and Training Centre, Government of India.</li>
+        <li><strong>ISL Dictionary:</strong> official dictionary with video signs and English/Hindi equivalents.</li>
+        <li><strong>Official dictionary:</strong> <a href="https://divyangjan.depwd.gov.in/islrtc/" target="_blank" rel="noopener noreferrer">Open ISL Dictionary</a></li>
+        <li><strong>ISLRTC Dictionary page:</strong> <a href="https://islrtc.nic.in/isl-dictionary/" target="_blank" rel="noopener noreferrer">ISLRTC resources</a></li>
+        <li><strong>Attribution:</strong> ISLRTC, Department of Empowerment of Persons with Disabilities, Ministry of Social Justice and Empowerment, Government of India.</li>
+        <li><strong>Usage:</strong> ISLRTC states that the dictionary can be used for research, teaching and technology development with acknowledgement and without resale/profiteering.</li>
+      </ul>
+      <p>For sentence-level ISL translation, a verified sentence/phrase dataset or ISL model must be integrated. A word lookup is not presented as full ISL grammar.</p>
+    </div>
+    <div>
+      <h3>Recognition Model</h3>
+      <p>The camera interface is ready for a real model through <code>islRecognitionService</code>. No model is bundled here, so the app reports that dependency honestly rather than guessing.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const docViewer=document.getElementById('docViewer'),ruler=document.getElementById('ruler'),progress=document.getElementById('progress'),status=document.getElementById('status');
+let currentSentences=[],currentIndex=0,speechRate=1,cameraStream=null,recognition=null,lastTranslation="",speechUtterance=null;
+let committedTranscript="",interimTranscript="",speechSessionId=0,processedFinalResults=new Set(),baseTextBeforeSpeech="";
+const TRANSLATION_BACKEND_URL=""; // Optional production backend: POST {text,sourceLanguage,targetLanguage} -> {translation}
+const ISL_MODEL_ENDPOINT=""; // Optional real ISL recognition backend. Leave empty unless a real trained model is available.
+const resourceModal=document.getElementById("resourceModal");
+
+function updateStatus(msg,cls=''){status.textContent=msg;status.className='status '+cls}
+function escapeHTML(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
+
+document.getElementById('toggleDyslexia').onchange=e=>docViewer.classList.toggle('ar-dyslexia',e.target.checked);
+document.getElementById('toggleContrast').onchange=e=>docViewer.classList.toggle('ar-contrast',e.target.checked);
+document.getElementById('toggleCalm').onchange=e=>docViewer.classList.toggle('ar-calm',e.target.checked);
+document.getElementById('spacing').oninput=e=>{let v=+e.target.value;document.getElementById('spacingVal').textContent=v?'+'+v+'px':'Normal';docViewer.style.wordSpacing=v?v+'px':''};
+document.getElementById('lineHeight').oninput=e=>{let v=+e.target.value/10;document.getElementById('lineVal').textContent=v.toFixed(1);docViewer.style.lineHeight=v};
+document.getElementById('toggleRuler').onchange=e=>ruler.style.display=e.target.checked?'block':'none';
+document.addEventListener('mousemove',e=>{if(ruler.style.display!=='none')ruler.style.top=(e.clientY-14)+'px'});
+
+function loadText(){const text=document.getElementById('textInput').value.trim();if(!text){updateStatus('No text to load','err');return}docViewer.innerHTML=text.split(/\n+/).map(x=>'<p>'+escapeHTML(x)+'</p>').join('');updateStatus('Text loaded','ok')}
+function clearText(){document.getElementById('textInput').value='';docViewer.innerHTML='';updateStatus('Cleared')}
+
+document.querySelectorAll('[data-speed]').forEach(b=>b.onclick=()=>{speechRate=+b.dataset.speed;document.querySelectorAll('[data-speed]').forEach(x=>x.classList.remove('active'));b.classList.add('active');updateStatus('Narration speed set to '+speechRate+'×','ok');if(window.speechSynthesis.speaking&&!window.speechSynthesis.paused){playFromCurrentSentence()}});
+
+document.getElementById('ttsPlay').onclick=()=>{const text=docViewer.innerText.trim();if(!text){updateStatus('No text to narrate','err');return}window.speechSynthesis.cancel();currentSentences=text.match(/[^.!?]+[.!?]+|[^.!?]+$/g)||[text];currentIndex=0;playNext()};
+document.getElementById('ttsPause').onclick=()=>window.speechSynthesis.paused?window.speechSynthesis.resume():window.speechSynthesis.pause();
+document.getElementById('ttsStop').onclick=()=>{window.speechSynthesis.cancel();progress.style.width='0%';clearHighlights();updateStatus('Stopped')};
+function playFromCurrentSentence(){window.speechSynthesis.cancel();setTimeout(playNext,30)}
+function playNext(){if(currentIndex>=currentSentences.length){progress.style.width='100%';clearHighlights();updateStatus('Narration complete','ok');return}const sentence=currentSentences[currentIndex].trim(),u=new SpeechSynthesisUtterance(sentence);u.rate=speechRate;u.lang=document.getElementById('sourceLang').value==='hi'?'hi-IN':'en-IN';u.onstart=()=>{highlightSentence(sentence);progress.style.width=Math.round(currentIndex/currentSentences.length*100)+'%'};u.onend=()=>{currentIndex++;playNext()};u.onerror=()=>{currentIndex++;playNext()};speechUtterance=u;window.speechSynthesis.speak(u)}
+function highlightSentence(sentence){clearHighlights();const text=docViewer.innerText,idx=text.indexOf(sentence);if(idx<0)return;const walker=document.createTreeWalker(docViewer,NodeFilter.SHOW_TEXT);let node,count=0;while(node=walker.nextNode()){let end=count+node.textContent.length;if(end>idx&&count<idx+sentence.length){const span=document.createElement('span');span.className='word-highlight';node.parentNode.insertBefore(span,node);span.appendChild(node)}count=end}}
+function clearHighlights(){document.querySelectorAll('.word-highlight').forEach(el=>{while(el.firstChild)el.parentNode.insertBefore(el.firstChild,el);el.remove()})}
+
+function swapLanguages(){let s=document.getElementById('sourceLang'),t=document.getElementById('targetLang'),v=s.value;s.value=t.value;t.value=v}
+const translationService={
+ async translate(text,sourceLanguage,targetLanguage){
+   if(!text.trim()) throw new Error("No text to translate.");
+   if(sourceLanguage===targetLanguage) return text;
+   if(TRANSLATION_BACKEND_URL){
+     const r=await fetch(TRANSLATION_BACKEND_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text,sourceLanguage,targetLanguage})});
+     if(!r.ok) throw new Error("Translation backend returned HTTP "+r.status);
+     const data=await r.json();
+     if(!data.translation) throw new Error("Translation backend returned no translation.");
+     return data.translation;
+   }
+   // Real browser-accessible provider for this prototype. Production should use the backend proxy above.
+   const url="https://api.mymemory.translated.net/get?q="+encodeURIComponent(text)+"&langpair="+encodeURIComponent(sourceLanguage+"|"+targetLanguage);
+   const r=await fetch(url,{headers:{"Accept":"application/json"}});
+   if(!r.ok) throw new Error("Translation service returned HTTP "+r.status);
+   const data=await r.json();
+   const translated=data?.responseData?.translatedText;
+   if(!translated) throw new Error("Translation service returned no translation.");
+   return translated;
+ }
+};
+
+async function translateText(){
+ const text=getText(),from=document.getElementById('sourceLang').value,to=document.getElementById('targetLang').value;
+ if(!text){updateStatus('No text to translate','err');return}
+ translationOutput.textContent='Translating…';
+ updateStatus('Translating…');
+ try{
+   lastTranslation=await translationService.translate(text,from,to);
+   translationOutput.textContent=lastTranslation;
+   updateStatus('Translation completed','ok');
+ }catch(e){
+   lastTranslation="";
+   translationOutput.textContent='Translation service is temporarily unavailable. '+e.message;
+   updateStatus('Translation failed','err');
+ }
+}
+function useTranslation(){
+ const value=translationOutput.innerText.trim();
+ if(!value||value.startsWith('Translation result')||value.startsWith('Translation service')){updateStatus('No translation is available yet','err');return}
+ lastTranslation=value;
+ document.getElementById('textInput').value=value;
+ loadText();
+ updateStatus('Translation is now the active text','ok');
+}
+
+async function runOCR(){
+ const file=document.getElementById('ocrFile').files[0];if(!file){ocrProgress.textContent='Choose an image first.';return}
+ ocrProgress.textContent='Preparing OCR...';
+ if(file.type==='application/pdf'){ocrProgress.textContent='PDF OCR needs a PDF-to-image pipeline. Upload a page image for this browser-only demo.';return}
+ try{
+  if(!window.Tesseract){await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js')}
+  ocrProgress.textContent='Running OCR...';
+  const result=await Tesseract.recognize(file,'eng',{logger:m=>{if(m.status)ocrProgress.textContent=m.status+(m.progress?': '+Math.round(m.progress*100)+'%':'')}})
+  const text=result.data.text.trim();ocrOutput.textContent=text||'No text detected.';if(text){document.getElementById('textInput').value=text;loadText()}ocrProgress.textContent='OCR complete. Accuracy depends on image quality.';
+ }catch(e){ocrProgress.textContent='OCR could not run: '+e.message}
+}
+function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('OCR library could not be loaded'));document.head.appendChild(s)})}
+
+function getText(){return document.getElementById('textInput').value.trim()||docViewer.innerText.trim()}
+
+const summarizationService={
+ split(text){return text.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.map(s=>s.trim()).filter(Boolean)||[text.trim()]},
+ scoreSentences(sentences){
+   const stop=new Set("the a an and or but if then than of to in on for from with by is are was were be been being this that these those it its as at into about after before over under very can could should would will may might do does did have has had not no yes you your we our they their he she his her".split(/\s+/));
+   const freq={};
+   sentences.join(" ").toLowerCase().replace(/[^a-z0-9\\s]/g," ").split(/\\s+/).filter(w=>w&&!stop.has(w)).forEach(w=>freq[w]=(freq[w]||0)+1);
+   return sentences.map((s,i)=>{
+     const words=s.toLowerCase().replace(/[^a-z0-9\\s]/g," ").split(/\\s+/).filter(w=>w&&!stop.has(w));
+     const tf=words.reduce((n,w)=>n+(freq[w]||0),0)/(Math.max(words.length,1));
+     const position=1-(i/Math.max(sentences.length,1))*0.35;
+     const lengthPenalty=words.length<4?0.45:Math.min(1,words.length/12);
+     return {s,i,score:tf*position*lengthPenalty};
+   });
+ },
+ shortSummary(text){
+   const sentences=this.split(text); if(sentences.length<=2) return sentences.join(" ");
+   const ranked=this.scoreSentences(sentences).sort((a,b)=>b.score-a.score).slice(0,Math.min(3,sentences.length));
+   return ranked.sort((a,b)=>a.i-b.i).map(x=>x.s).join(" ");
+ },
+ keyPoints(text){
+   const sentences=this.split(text);
+   return this.scoreSentences(sentences).sort((a,b)=>b.score-a.score).slice(0,Math.min(5,sentences.length)).sort((a,b)=>a.i-b.i).map(x=>"• "+x.s).join("\\n");
+ },
+ detailedSummary(text){
+   const sentences=this.split(text);
+   const ranked=this.scoreSentences(sentences).sort((a,b)=>b.score-a.score);
+   const main=ranked.slice(0,Math.min(2,sentences.length)).sort((a,b)=>a.i-b.i).map(x=>x.s).join(" ");
+   const details=ranked.slice(2,Math.min(7,sentences.length)).sort((a,b)=>a.i-b.i).map(x=>"• "+x.s).join("\\n")||"• No additional supporting detail was found.";
+   const conclusion=sentences[sentences.length-1];
+   return "Detailed Summary\\n\\n1. Main Topic\\n"+main+"\\n\\n2. Important Concepts\\n"+details+"\\n\\n3. Supporting Details\\n"+(sentences.length>7?"• Additional source sentences were considered by the local ranking algorithm.":"• The source is short, so no separate supporting section was necessary.")+"\\n\\n4. Conclusion\\n"+conclusion;
+ }
+};
+
+function simplifyText(){
+ const text=getText();if(!text){updateStatus('No text to simplify','err');return}
+ const simplified=text.replace(/\\b(utilize)\\b/gi,'use').replace(/\\bapproximately\\b/gi,'about').replace(/\\bdemonstrate\\b/gi,'show').replace(/\\bcommence\\b/gi,'start').replace(/\\bsubsequently\\b/gi,'later').replace(/\\bin order to\\b/gi,'to');
+ aiOutput.textContent=simplified;
+ updateStatus('Local simplification completed','ok');
+}
+
+function summarizeText(){
+ const text=getText();if(!text){updateStatus('No text to summarize','err');return}
+ const mode=document.getElementById('summaryMode').value;
+ aiOutput.textContent=mode==='short'?summarizationService.shortSummary(text):mode==='key'?summarizationService.keyPoints(text):summarizationService.detailedSummary(text);
+ updateStatus('Local '+(mode==='key'?'key-point':mode)+' summary completed','ok');
+}
+
+async function requestCamera(){
+ if(!navigator.mediaDevices?.getUserMedia){islStatus.textContent='Camera access is not supported by this browser.';return}
+ const ok=confirm('AccessRead needs camera access to detect hand movements for Indian Sign Language recognition. Your camera remains off until you allow access. Allow camera access?');
+ if(!ok){islStatus.textContent='Camera access was not requested.';return}
+ try{
+  cameraStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false});
+  const video=document.getElementById('camera');video.srcObject=cameraStream;video.style.display='block';
+  islStatus.textContent='Camera active. ISL recognition model is not configured in this prototype, so no sign is being guessed or fabricated.';
+ }catch(e){islStatus.textContent='Camera access was denied or unavailable. Other AccessRead features remain available.'}
+}
+function stopCamera(){if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null}const v=document.getElementById('camera');v.srcObject=null;v.style.display='none';islStatus.textContent='Camera stopped.'}
+/* Text → ISL: automatic inline visual sequence. */
+const ISL_BASIC={
+  "hello":"HELLO","hi":"HELLO","thank you":"THANK YOU","thanks":"THANK YOU",
+  "please":"PLEASE","sorry":"SORRY","help":"HELP","yes":"YES","no":"NO",
+  "water":"WATER","food":"FOOD","home":"HOME","school":"SCHOOL","college":"COLLEGE",
+  "friend":"FRIEND","mother":"MOTHER","father":"FATHER","i":"I / ME","me":"I / ME",
+  "you":"YOU","we":"WE","need":"NEED","want":"WANT","come":"COME","go":"GO",
+  "stop":"STOP","good":"GOOD","bad":"BAD","today":"TODAY","tomorrow":"TOMORROW",
+  "how":"HOW","my":"MY"
+};
+const ISL_PHRASES={
+  "i need help":["I / ME","NEED","HELP"],
+  "i need water":["I / ME","NEED","WATER"],
+  "i want water":["I / ME","WANT","WATER"],
+  "i want food":["I / ME","WANT","FOOD"],
+  "please help me":["PLEASE","HELP","I / ME"],
+  "can you help me":["YOU","HELP","I / ME"],
+  "thank you":["THANK YOU"],
+  "i am going home":["I / ME","GO","HOME"],
+  "i am going to college":["I / ME","GO","COLLEGE"]
+};
+/* Verified official ISLRTC YouTube clip currently mapped here. */
+const ISL_INLINE_VIDEOS={
+  "WATER":"FNuhiUP2IHY"
+};
+function normalizeISL(value){return value.toLowerCase().replace(/[^a-z0-9\s']/g,' ').replace(/\s+/g,' ').trim()}
+function findISLSequence(text){
+  const n=normalizeISL(text); if(!n)return [];
+  if(ISL_PHRASES[n])return ISL_PHRASES[n];
+  const words=n.split(' '),out=[],skip=new Set(['a','an','the','am','is','are','to','of','for','in','on','at','can','could','would','will','do','does','did']);
+  for(let i=0;i<words.length;i++){
+    if(i+1<words.length){const pair=words[i]+' '+words[i+1];if(ISL_PHRASES[pair]){out.push(...ISL_PHRASES[pair]);i++;continue}}
+    if(!skip.has(words[i])&&ISL_BASIC[words[i]])out.push(ISL_BASIC[words[i]]);
+  }
+  return out;
+}
+function createISLAutoCard(label){
+  const card=document.createElement('div');card.className='isl-auto-card';
+  const title=document.createElement('div');title.className='isl-word';title.textContent=label;card.appendChild(title);
+  const videoId=ISL_INLINE_VIDEOS[label];
+  if(videoId){
+    const iframe=document.createElement('iframe');
+    iframe.src='https://www.youtube.com/embed/'+videoId+'?rel=0';
+    iframe.title='Indian Sign Language sign for '+label;
+    iframe.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+    iframe.allowFullscreen=true;card.appendChild(iframe);
+    const source=document.createElement('div');source.className='isl-auto-source';source.textContent='Verified ISLRTC video source.';card.appendChild(source);
+  }else{
+    const placeholder=document.createElement('div');placeholder.className='isl-placeholder';
+    placeholder.innerHTML='<div><strong>Visual not bundled yet</strong><br>No verified video is mapped for this word in this prototype, so AccessRead will not display an unrelated sign.</div>';
+    card.appendChild(placeholder);
+    const letters=document.createElement('div');letters.className='isl-fingerspell';
+    label.replace(/[^A-Za-z]/g,'').toUpperCase().split('').forEach(ch=>{const b=document.createElement('span');b.className='isl-letter';b.textContent=ch;letters.appendChild(b)});
+    card.appendChild(letters);
+    const source=document.createElement('div');source.className='isl-auto-source';source.textContent='Fingerspelling fallback shown until a verified sign video is mapped.';card.appendChild(source);
+  }
+  return card;
+}
+function showISL(){
+  const text=getText();const sequenceBox=document.getElementById('islSequence');const results=document.getElementById('islResults');
+  if(!text){islStatus.textContent='Enter or load text first.';sequenceBox.innerHTML='';results.innerHTML='';return}
+  const sequence=findISLSequence(text);sequenceBox.innerHTML='';results.innerHTML='';
+  if(!sequence.length){islStatus.textContent='No recognized ISL terms were found in the current vocabulary.';return}
+  islStatus.textContent='ISL visuals generated automatically from the text.';
+  sequence.forEach(label=>sequenceBox.appendChild(createISLAutoCard(label)));
+}
+
+function startVoiceInput(){
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!SR){updateStatus('Speech recognition is not supported by this browser.','err');return}
+ if(recognition){updateStatus('Speech recognition is already active.','err');return}
+ const ok=confirm('AccessRead needs microphone access to convert speech into text. The microphone is used only while speech recognition is active. Allow microphone access?');
+ if(!ok){updateStatus('Microphone permission was not requested.');return}
+ baseTextBeforeSpeech=document.getElementById('textInput').value.trim();
+ committedTranscript="";interimTranscript="";processedFinalResults=new Set();
+ const mySession=++speechSessionId;
+ recognition=new SR();recognition.lang=document.getElementById('sourceLang').value==='hi'?'hi-IN':'en-IN';
+ recognition.continuous=true;recognition.interimResults=true;
+ recognition.onstart=()=>{updateStatus('Microphone started. Listening…','ok')};
+ recognition.onresult=e=>{
+   if(mySession!==speechSessionId)return;
+   let interimParts=[];
+   for(let i=e.resultIndex;i<e.results.length;i++){
+     const result=e.results[i];
+     const transcript=result[0].transcript.trim();
+     if(result.isFinal){
+       if(!processedFinalResults.has(i)){
+         processedFinalResults.add(i);
+         committedTranscript=(committedTranscript+" "+transcript).trim();
+       }
+     }else{
+       interimParts.push(transcript);
+     }
+   }
+   interimTranscript=interimParts.join(" ").trim();
+   const combined=[baseTextBeforeSpeech,committedTranscript,interimTranscript].filter(Boolean).join(" ").trim();
+   document.getElementById('textInput').value=combined;
+   // Only final text is loaded into the document viewer. Interim text is visible but never committed.
+   if(committedTranscript){
+     const committedOnly=[baseTextBeforeSpeech,committedTranscript].filter(Boolean).join(" ").trim();
+     document.getElementById('textInput').value=interimTranscript?[committedOnly+" "+interimTranscript]:committedOnly;
+     loadText();
+   }
+ };
+ recognition.onerror=e=>{
+   if(e.error==='not-allowed'||e.error==='service-not-allowed')updateStatus('Microphone permission was denied.','err');
+   else updateStatus('Speech recognition error: '+e.error,'err');
+ };
+ recognition.onend=()=>{
+   if(mySession!==speechSessionId)return;
+   interimTranscript="";
+   const finalText=[baseTextBeforeSpeech,committedTranscript].filter(Boolean).join(" ").trim();
+   document.getElementById('textInput').value=finalText;
+   if(finalText)loadText();
+   recognition=null;
+   updateStatus('Microphone stopped','ok');
+ };
+ try{recognition.start()}catch(e){recognition=null;updateStatus('Could not start microphone: '+e.message,'err')}
+}
+function stopVoiceInput(){
+ if(!recognition)return;
+ speechSessionId++;
+ try{recognition.stop()}catch(e){}
+ recognition=null;
+ interimTranscript="";
+ const finalText=[baseTextBeforeSpeech,committedTranscript].filter(Boolean).join(" ").trim();
+ document.getElementById('textInput').value=finalText;
+ if(finalText)loadText();
+ updateStatus('Microphone stopped','ok');
+}
+
+let lastFocusedElement=null;
+function openResources(section){
+ lastFocusedElement=document.activeElement;
+ document.getElementById('translationResources').style.display=section==='isl'?'none':'block';
+ document.getElementById('islResources').style.display=section==='translation'?'none':'block';
+ resourceModal.classList.add('open');resourceModal.setAttribute('aria-hidden','false');
+ document.querySelector('.modal-close').focus();
+}
+function closeResources(){
+ resourceModal.classList.remove('open');resourceModal.setAttribute('aria-hidden','true');
+ if(lastFocusedElement)lastFocusedElement.focus();
+}
+resourceModal.addEventListener('click',e=>{if(e.target===resourceModal)closeResources()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&resourceModal.classList.contains('open'))closeResources()});
+
+
+/* Context-aware dictionary. Existing AccessRead features remain unchanged. */
+// This route must be implemented by the FastAPI backend. Keep TinyFish credentials server-side.
+const TINYFISH_WORD_ENRICHMENT_URL = "http://127.0.0.1:8000/api/word-enrichment";
+let dictionaryLastContext = "";
+let dictionaryLastDefinition = "";
+
+function dictionaryGetContext(word){
+  const text = docViewer.innerText || "";
+  if(!word || !text.trim()) return "";
+  const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp("\\b" + escaped + "\\b", "i");
+  const match = re.exec(text);
+  if(!match) return "";
+  const start = text.lastIndexOf("\n", match.index);
+  const sentenceStartCandidates = [text.lastIndexOf(".",match.index-1),text.lastIndexOf("!",match.index-1),text.lastIndexOf("?",match.index-1),start];
+  const sentenceStart = Math.max(...sentenceStartCandidates)+1;
+  const ends = [text.indexOf(".",match.index),text.indexOf("!",match.index),text.indexOf("?",match.index),text.indexOf("\n",match.index)].filter(i=>i>=0);
+  const sentenceEnd = ends.length ? Math.min(...ends)+1 : text.length;
+  return text.slice(Math.max(0,sentenceStart),sentenceEnd).trim() || text.slice(Math.max(0,match.index-100),Math.min(text.length,match.index+180)).trim();
+}
+
+const ACCESSREAD_LOCAL_DICTIONARY = {
+  adult: {part:'noun / adjective', definition:'A person who has reached the age when they are legally considered grown up; in many places this is 18 years old. As an adjective, it means intended for or relating to grown people.', simple:'An adult is a grown-up. The legal age depends on the country, and is often 18.', example:'An adult is a person whose age is above 18.'},
+  person: {part:'noun', definition:'A human being.', simple:'One human being.', example:'Each person can learn at a different pace.'},
+  age: {part:'noun', definition:'The length of time that a person or thing has lived or existed.', simple:'How long someone or something has lived or existed.', example:'The minimum age for an activity may be 18.'},
+  above: {part:'preposition / adverb', definition:'At a higher level or position than something; more than a stated amount.', simple:'Higher than, or more than.', example:'The temperature is above 20 degrees.'},
+  below: {part:'preposition / adverb', definition:'At a lower level or position than something; less than a stated amount.', simple:'Lower than, or less than.', example:'The reading is below the limit.'},
+  because: {part:'conjunction', definition:'For the reason that; used to explain why something happens.', simple:'It tells you the reason something happens.', example:'The sensor stopped because its power was disconnected.'},
+  however: {part:'adverb', definition:'Used to introduce a statement that contrasts with or differs from what was just said.', simple:'It means “but” or “despite that.”', example:'The design is simple; however, it is reliable.'},
+  inertial: {part:'adjective', definition:'Relating to inertia, or to measurements made by detecting changes in motion.', simple:'In this context, an inertial measurement uses motion sensors to estimate how an object moves and turns.', example:'An inertial measurement unit combines accelerometer and gyroscope readings.'},
+  inertia: {part:'noun', definition:'The tendency of an object to resist a change in its motion.', simple:'An object tends to keep doing what it is already doing unless a force changes its motion.', example:'Inertia helps explain why a moving vehicle keeps moving when the engine stops.'},
+  accelerometer: {part:'noun', definition:'A sensor that measures acceleration, including changes in speed or direction.', simple:'It senses how movement changes.', example:'A phone uses an accelerometer to detect when it is tilted.'},
+  gyroscope: {part:'noun', definition:'A device or sensor that measures or maintains orientation by sensing rotation.', simple:'It senses turning or rotation.', example:'A gyroscope can help estimate how a vehicle is rotating.'},
+  dynamics: {part:'noun', definition:'The study of forces and the resulting motion of objects or systems.', simple:'It describes how forces affect movement.', example:'Vehicle dynamics includes braking, steering, and stability.'},
+  sensor: {part:'noun', definition:'A device that detects or measures a physical property and produces a signal.', simple:'A sensor measures something about the world, such as motion, temperature, or light.', example:'A motion sensor detects changes in movement.'},
+  estimate: {part:'verb', definition:'To calculate or judge an approximate value using available information.', simple:'To make a reasonable calculation when the exact value is not known.', example:'The system estimates the vehicle’s orientation from sensor data.'},
+  orientation: {part:'noun', definition:'The position or direction in which something is facing.', simple:'The way an object is tilted or pointed.', example:'The sensor estimates the orientation of the vehicle.'},
+  vehicle: {part:'noun', definition:'A machine used to transport people or goods, such as a car, bus, or truck.', simple:'A means of transport.', example:'The system monitors the movement of the vehicle.'},
+  measurement: {part:'noun', definition:'The process or result of determining the size, amount, or value of something.', simple:'A value obtained by measuring something.', example:'The unit combines several sensor measurements.'},
+  motion: {part:'noun', definition:'A change in the position of an object over time.', simple:'Movement from one position to another.', example:'The sensors track the motion of the vehicle.'}
+};
+
+async function dictionaryLookup(){
+  const input = document.getElementById('dictionaryWord');
+  const word = input.value.trim().replace(/\s+/g,' ');
+  const statusEl = document.getElementById('dictionaryStatus');
+  const definitionEl = document.getElementById('dictionaryDefinition');
+  const contextEl = document.getElementById('dictionaryContext');
+  const simpleEl = document.getElementById('dictionarySimple');
+  const exampleEl = document.getElementById('dictionaryExample');
+  const sourceEl = document.getElementById('dictionarySource');
+  const out = document.getElementById('dictionaryEnrichment');
+  if(!word){statusEl.textContent='Enter or select a word first.';statusEl.className='status err';return;}
+  if(word.length>100){statusEl.textContent='Please enter a shorter word or phrase.';statusEl.className='status err';return;}
+  const context = dictionaryGetContext(word);
+  dictionaryLastContext = context;
+  dictionaryLastDefinition = '';
+  definitionEl.textContent='Looking up definition…';
+  contextEl.textContent=context || 'This word was not found in the current reader text. You can still look up its general definition.';
+  simpleEl.textContent='Checking online dictionaries…';
+  exampleEl.textContent=''; sourceEl.textContent=''; out.textContent='';
+  statusEl.textContent='Looking up “'+word+'”…';statusEl.className='status';
+
+  // Try multiple public sources. The first may be blocked on some networks or browsers.
+  const providers = [
+    async () => {
+      const r = await fetch('https://api.dictionaryapi.dev/api/v2/entries/en/'+encodeURIComponent(word), {headers:{'Accept':'application/json'}});
+      if(!r.ok) throw new Error('Dictionary API HTTP '+r.status);
+      const data = await r.json();
+      const entry = Array.isArray(data) ? data[0] : null;
+      const defs = (entry?.meanings || []).flatMap(m=>(m.definitions||[]).map(d=>({part:m.partOfSpeech, definition:d.definition, example:d.example}))).filter(d=>d.definition);
+      if(!defs.length) throw new Error('No definition from first provider');
+      return { ...defs[0], source:'Free Dictionary API (dictionaryapi.dev)' };
+    },
+    async () => {
+      const r = await fetch('https://en.wiktionary.org/api/rest_v1/page/definition/'+encodeURIComponent(word), {headers:{'Accept':'application/json'}});
+      if(!r.ok) throw new Error('Wiktionary HTTP '+r.status);
+      const data = await r.json();
+      const entries = data.en || [];
+      for(const entry of entries){
+        const item = (entry.definitions || []).find(d=>d.definition);
+        if(item) return {part:entry.partOfSpeech || '', definition:item.definition.replace(/<[^>]*>/g,'').replace(/&quot;/g,'"').replace(/&#39;/g,"'"), example:(item.examples||[])[0]?.text || '', source:'Wiktionary'};
+      }
+      throw new Error('No definition from Wiktionary');
+    }
+  ];
+  let found = null;
+  for(const provider of providers){ try { found = await provider(); if(found) break; } catch(e) { /* try next source */ } }
+  if(found){
+    dictionaryLastDefinition=found.definition;
+    definitionEl.textContent=(found.part ? found.part+': ' : '')+found.definition;
+    exampleEl.textContent=found.example || 'No example sentence was supplied by the source.';
+    simpleEl.textContent=context ? 'Read the definition alongside the sentence above to understand how the word is being used.' : 'This is the general meaning. Add or select a sentence to see its context.';
+    sourceEl.textContent='Definition source: '+found.source+'.';
+    statusEl.textContent='Definition found online.';statusEl.className='status ok';
+    return;
+  }
+
+  // Network-independent definitions for the words most commonly used in the demo.
+  const key=word.toLowerCase().replace(/[^a-z'-]/g,'');
+  const local=ACCESSREAD_LOCAL_DICTIONARY[key];
+  if(local){
+    dictionaryLastDefinition=local.definition;
+    definitionEl.textContent=(local.part ? local.part+': ' : '')+local.definition;
+    exampleEl.textContent=local.example;
+    simpleEl.textContent=local.simple;
+    sourceEl.textContent='Definition source: AccessRead built-in offline dictionary. Online sources could not be reached.';
+    statusEl.textContent='Definition found in offline dictionary.';statusEl.className='status ok';
+  } else {
+    // Do not invent a dictionary definition. Give a transparent, useful next step.
+    definitionEl.textContent='Online dictionaries could not be reached, and this word is not in the built-in offline dictionary.';
+    simpleEl.textContent=context
+      ? 'Context detected: “'+context+'” This sentence may help infer the meaning, but it is not a verified definition. Reconnect to the internet or start the AccessRead backend to retrieve a definition.'
+      : 'Reconnect to the internet or start the AccessRead backend to retrieve a definition for this word.';
+    exampleEl.textContent='';
+    sourceEl.textContent='No definition source responded. Try the online lookup again when internet access is available.';
+    statusEl.textContent='Could not reach either online dictionary. Check your internet connection.';statusEl.className='status err';
+  }
+}
+
+async function dictionaryTinyFishEnrich(){
+  const word=document.getElementById('dictionaryWord').value.trim().replace(/\s+/g,' ');
+  const context=dictionaryLastContext || dictionaryGetContext(word);
+  const out=document.getElementById('dictionaryEnrichment');
+  const simple=document.getElementById('dictionarySimple');
+  const source=document.getElementById('dictionarySource');
+  const statusEl=document.getElementById('dictionaryStatus');
+  if(!word){statusEl.textContent='Enter or select a word first.';statusEl.className='status err';return;}
+  out.textContent='Requesting additional context…';
+  statusEl.textContent='Contacting AccessRead backend…';statusEl.className='status';
+  try{
+    const response=await fetch(TINYFISH_WORD_ENRICHMENT_URL,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({word,context,definition:dictionaryLastDefinition})
+    });
+    if(!response.ok) throw new Error(response.status===404?'TinyFish backend route was not found. Add the /api/word-enrichment endpoint to FastAPI.':'Backend returned HTTP '+response.status);
+    const data=await response.json();
+    const enrichment=data.explanation || data.summary || data.content || data.result;
+    if(!enrichment) throw new Error('Backend returned no explanation.');
+    out.textContent=enrichment;
+    if(data.simple_explanation) simple.textContent=data.simple_explanation;
+    if(data.example) document.getElementById('dictionaryExample').textContent=data.example;
+    if(Array.isArray(data.sources) && data.sources.length){
+      source.textContent='Sources: '+data.sources.map(s=>typeof s==='string'?s:(s.title||s.url||'Source')).join(' | ');
+    } else if(data.source_url){source.textContent='Source: '+data.source_url;}
+    statusEl.textContent='Additional context received from the configured backend.';statusEl.className='status ok';
+  }catch(error){
+    out.textContent='TinyFish enrichment is not connected yet. '+(error.message||'Check that the FastAPI backend is running and exposes POST /api/word-enrichment.');
+    statusEl.textContent='Web enrichment unavailable; the basic dictionary can still be used.';statusEl.className='status err';
+  }
+}
+
+function dictionarySpeak(){
+  const word=document.getElementById('dictionaryWord').value.trim();
+  const text=[word,document.getElementById('dictionaryDefinition').innerText,document.getElementById('dictionaryContext').innerText,document.getElementById('dictionarySimple').innerText,document.getElementById('dictionaryExample').innerText].filter(Boolean).join('. ');
+  if(!text.trim()){updateStatus('No dictionary explanation to read','err');return;}
+  window.speechSynthesis.cancel();
+  const utterance=new SpeechSynthesisUtterance(text);
+  utterance.lang='en-IN';utterance.rate=speechRate;
+  window.speechSynthesis.speak(utterance);
+}
+
+document.getElementById('dictionaryLookupBtn').addEventListener('click',dictionaryLookup);
+document.getElementById('dictionaryWord').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();dictionaryLookup();}});
+document.getElementById('dictionaryTinyFishBtn').addEventListener('click',dictionaryTinyFishEnrich);
+document.getElementById('dictionarySpeakBtn').addEventListener('click',dictionarySpeak);
+docViewer.addEventListener('mouseup',()=>{
+  const selection=window.getSelection()?.toString().trim();
+  if(selection && selection.split(/\s+/).length===1 && selection.length<=100){document.getElementById('dictionaryWord').value=selection;dictionaryLastContext=dictionaryGetContext(selection);}
+});
+
+function analyzeText(){const text=docViewer.innerText.trim();if(!text){updateStatus('No text to analyze','err');return}const sentences=text.match(/[^.!?]+[.!?]+|[^.!?]+$/g)||[text],words=text.split(/\s+/).filter(Boolean),syllables=words.reduce((a,w)=>{let x=w.toLowerCase().replace(/[^a-z]/g,'');let n=(x.match(/[aeiou]+/g)||[]).length;return a+Math.max(1,n-(x.endsWith('e')&&n>1?1:0))},0);const flesch=Math.round(206.835-1.015*(words.length/sentences.length)-84.6*(syllables/words.length));updateStatus('Flesch Score: '+flesch+' | '+words.length+' words | '+sentences.length+' sentences','ok')}
+function toggleRulerDemo(){const on=ruler.style.display==='none';ruler.style.display=on?'block':'none';document.getElementById('toggleRuler').checked=on;updateStatus(on?'Ruler ON':'Ruler OFF')}
+function resetAll(){['toggleDyslexia','toggleContrast','toggleCalm','toggleRuler','toggleTTS'].forEach(id=>document.getElementById(id).checked=false);document.getElementById('spacing').value=0;document.getElementById('lineHeight').value=18;docViewer.className='';docViewer.style.cssText='';ruler.style.display='none';window.speechSynthesis.cancel();stopCamera();stopVoiceInput();progress.style.width='0%';clearHighlights();updateStatus('All settings reset')}
+window.addEventListener('beforeunload',()=>{stopCamera();stopVoiceInput();window.speechSynthesis.cancel()});
+window.onload=loadText;
+</script>
+</body>
+</html>
